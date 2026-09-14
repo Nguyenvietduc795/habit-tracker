@@ -10,7 +10,7 @@ Bài tập 1 ngày của training **"Tư duy Big Picture cho Team IT" — NhiLe 
 
 | Lớp | Công nghệ |
 |---|---|
-| Database | PostgreSQL (Supabase/Neon) + Prisma |
+| Database | PostgreSQL (Supabase) — schema quan ly bang file SQL danh so trong `api/db/` |
 | Backend | NestJS + TypeScript, auth bằng JWT (access + refresh token) |
 | Frontend | React 19 + Vite + TypeScript + TanStack Query |
 | Deploy | Frontend → Vercel · Backend → Render · DB → Supabase |
@@ -55,11 +55,8 @@ cp .env.example .env
 
 3. Điền `DATABASE_URL` và `JWT_SECRET` thật vào `.env`.
 
-4. Chạy migration database:
-
-```bash
-npm run prisma:migrate --prefix api
-```
+4. Tạo bảng: mở Supabase → SQL Editor → dán nội dung [`api/db/001_init.sql`](api/db/001_init.sql) → Run.
+   (Hoặc chạy bằng psql: `psql "$DATABASE_URL" -f api/db/001_init.sql`)
 
 5. Chạy backend (cổng 3000) và frontend (cổng 5173) ở 2 cửa sổ terminal:
 
@@ -84,7 +81,7 @@ npm run dev --prefix web
 ## Tiến độ theo 6 chặng
 
 - [x] Chặng 1 — Setup & Repo
-- [ ] Chặng 2 — Database (ERD + migration)
+- [x] Chặng 2 — Database (ERD + migration)
 - [ ] Chặng 3 — Backend (API contract + auth + CRUD)
 - [ ] Chặng 4 — Frontend (layout + login + list)
 - [ ] Chặng 5 — Kết nối & Auth end-to-end
