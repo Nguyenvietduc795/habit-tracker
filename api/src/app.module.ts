@@ -1,10 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module.js';
+import { DatabaseModule } from './database/database.module.js';
+import { HabitsModule } from './habits/habits.module.js';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      // .env nam o goc repo (dung chung cho ca web/ va api/), khong nam trong api/
+      envFilePath: ['../.env', '.env'],
+    }),
+    DatabaseModule,
+    AuthModule,
+    HabitsModule,
+  ],
 })
 export class AppModule {}
