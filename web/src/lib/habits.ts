@@ -4,14 +4,18 @@ import type { Frequency, Habit, HabitDetail } from './types.ts'
 
 export const habitKeys = {
   all: ['habits'] as const,
-  list: (includeArchived: boolean) => ['habits', 'list', includeArchived] as const,
+  list: ['habits', 'list'] as const,
   detail: (id: string) => ['habits', 'detail', id] as const,
 }
 
-export function useHabits(includeArchived = false) {
+/**
+ * MOT request lay ca thoi quen dang dung lan da luu tru, roi tach o frontend.
+ * Truoc day goi 2 lan rieng — mot lan chi de biet "co cai nao luu tru khong".
+ */
+export function useHabits() {
   return useQuery({
-    queryKey: habitKeys.list(includeArchived),
-    queryFn: () => api<Habit[]>(`/habits${includeArchived ? '?includeArchived=true' : ''}`),
+    queryKey: habitKeys.list,
+    queryFn: () => api<Habit[]>('/habits?includeArchived=true'),
   })
 }
 
@@ -32,18 +36,34 @@ function useInvalidateHabits() {
 export function useCreateHabit() {
   const invalidate = useInvalidateHabits()
   return useMutation({
-    mutationFn: (input: { name: string; frequency?: Frequency }) =>
+    mutationFn: (input: { name: string; color: string; frequency?: Frequency }) =>
       api<Habit>('/habits', { method: 'POST', json: input }),
     onSuccess: invalidate,
   })
 }
 
-export function useRenameHabit() {
-  const invalidate = useInvalidateHabits()
+export function useUpdateHabit() {
+  const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) =>
-      api<Habit>(`/habits/${id}`, { method: 'PATCH', json: { name } }),
-    onSuccess: invalidate,
+    mutationFn: ({ id, ...changes }: { id: string; name?: string; color?: string }) =>
+      api<Habit>(`/habits/${id}`, { method: 'PATCH', json: changes }),
+
+    // Doi mau thi doi NGAY tren man hinh, khong cho server
+    onMutate: async ({ id, ...changes }) => {
+      await queryClient.cancelQueries({ queryKey: habitKeys.list })
+      const prevList = queryClient.getQueryData<Habit[]>(habitKeys.list)
+      if (prevList) {
+        queryClient.setQueryData<Habit[]>(
+          habitKeys.list,
+          prevList.map((h) => (h.id === id ? { ...h, ...changes } : h)),
+        )
+      }
+      return { prevList }
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.prevList) queryClient.setQueryData(habitKeys.list, context.prevList)
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: habitKeys.all }),
   })
 }
 
@@ -87,12 +107,11 @@ export function useToggleCheckIn() {
         : api<unknown>(`/habits/${habitId}/check-in`, { method: 'POST', json: { date } }),
 
     onMutate: async ({ habitId, date, checked, today }) => {
-      const listKey = habitKeys.list(false)
       const detailKey = habitKeys.detail(habitId)
 
       await queryClient.cancelQueries({ queryKey: habitKeys.all })
 
-      const prevList = queryClient.getQueryData<Habit[]>(listKey)
+      const prevList = queryClient.getQueryData<Habit[]>(habitKeys.list)
       const prevDetail = queryClient.getQueryData<HabitDetail>(detailKey)
 
       if (date === today && prevList) {
@@ -100,7 +119,7 @@ export function useToggleCheckIn() {
         // chua tick -> tick: chuoi dang tinh den hom qua, cong them hom nay = +1
         // da tick -> bo tick: chuoi van con song nho hom qua = -1
         queryClient.setQueryData<Habit[]>(
-          listKey,
+          habitKeys.list,
           prevList.map((h) =>
             h.id === habitId
               ? {
@@ -128,7 +147,7 @@ export function useToggleCheckIn() {
     },
 
     onError: (_error, { habitId }, context) => {
-      if (context?.prevList) queryClient.setQueryData(habitKeys.list(false), context.prevList)
+      if (context?.prevList) queryClient.setQueryData(habitKeys.list, context.prevList)
       if (context?.prevDetail) queryClient.setQueryData(habitKeys.detail(habitId), context.prevDetail)
     },
 

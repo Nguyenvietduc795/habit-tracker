@@ -1,18 +1,50 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { friendlyError } from '../lib/api.ts'
 import { useAuth } from '../lib/auth-context.ts'
+import { HABIT_COLORS, colorOf } from '../lib/colors.ts'
 import { formatLongDate, todayIn } from '../lib/dates.ts'
 import { useArchiveHabit, useCreateHabit, useDeleteHabit, useHabits } from '../lib/habits.ts'
+import type { Habit } from '../lib/types.ts'
+import { Confetti, ProgressRing } from './Celebration.tsx'
 import { HabitCard } from './HabitCard.tsx'
 import { NewHabitForm } from './NewHabitForm.tsx'
 
-const SUGGESTIONS = ['Uống 2 lít nước', 'Đọc sách 20 phút', 'Tập thể dục', 'Đi ngủ trước 23h']
+const SUGGESTIONS = [
+  { name: 'Uống 2 lít nước', emoji: '💧' },
+  { name: 'Đọc sách 20 phút', emoji: '📖' },
+  { name: 'Tập thể dục', emoji: '🏃' },
+  { name: 'Đi ngủ trước 23h', emoji: '🌙' },
+]
+
+function greeting(): string {
+  const hour = new Date().getHours()
+  if (hour < 5) return 'Khuya rồi'
+  if (hour < 11) return 'Chào buổi sáng'
+  if (hour < 14) return 'Chào buổi trưa'
+  if (hour < 18) return 'Chào buổi chiều'
+  return 'Chào buổi tối'
+}
+
+function headline(total: number, done: number): string {
+  if (total === 0) return 'Bắt đầu thói quen đầu tiên nào'
+  if (done === total) return 'Xong hết rồi. Tuyệt vời!'
+  if (done === 0) return `Hôm nay có ${total} việc nhỏ đang chờ bạn`
+  return `Còn ${total - done} việc nữa thôi, cố lên!`
+}
 
 export function Dashboard() {
   const { user, logout } = useAuth()
-  const habits = useHabits(false)
+  const habits = useHabits()
   const [notice, setNotice] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
+  const [confettiKey, setConfettiKey] = useState<number | null>(null)
+  const prevDone = useRef<number | null>(null)
+
+  const all = habits.data ?? []
+  const active = all.filter((h) => h.archivedAt === null)
+  const archived = all.filter((h) => h.archivedAt !== null)
+  const doneCount = active.filter((h) => h.checkedToday).length
+  const allDone = active.length > 0 && doneCount === active.length
 
   useEffect(() => {
     if (!notice) return
@@ -20,23 +52,37 @@ export function Dashboard() {
     return () => window.clearTimeout(timer)
   }, [notice])
 
+  // Phao giay CHI khi vua tick xong viec cuoi — khong ban lai moi lan mo app
+  useEffect(() => {
+    if (!habits.isSuccess) return
+    const prev = prevDone.current
+    prevDone.current = doneCount
+    if (prev !== null && allDone && prev < active.length) setConfettiKey(Date.now())
+  }, [doneCount, allDone, active.length, habits.isSuccess])
+
+  useEffect(() => {
+    if (confettiKey === null) return
+    const timer = window.setTimeout(() => setConfettiKey(null), 3200)
+    return () => window.clearTimeout(timer)
+  }, [confettiKey])
+
   if (!user) return null
 
   const today = todayIn(user.timezone)
-  const list = habits.data ?? []
-  const doneCount = list.filter((h) => h.checkedToday).length
-  const percent = list.length > 0 ? Math.round((doneCount / list.length) * 100) : 0
+  const firstName = user.displayName.trim() || user.email.split('@')[0]
 
   return (
     <div className="shell">
+      {confettiKey !== null && <Confetti key={confettiKey} />}
+
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark" aria-hidden="true">🔥</span>
           <span className="brand-name">Habit Tracker</span>
         </div>
         <div className="account">
-          <span className="account-name" title={user.email}>
-            {user.displayName || user.email}
+          <span className="avatar" aria-hidden="true">
+            {firstName.charAt(0).toUpperCase()}
           </span>
           <button className="btn btn-ghost btn-sm" type="button" onClick={() => void logout()}>
             Đăng xuất
@@ -45,25 +91,15 @@ export function Dashboard() {
       </header>
 
       <main>
-        <section className="hero">
-          <p className="eyebrow">{formatLongDate(today)}</p>
-          <h1 className="hero-title">
-            {list.length === 0
-              ? 'Hôm nay bắt đầu từ đâu?'
-              : doneCount === list.length
-                ? 'Xong hết rồi. Giỏi lắm.'
-                : `Còn ${list.length - doneCount} việc cho hôm nay`}
-          </h1>
-          {list.length > 0 && (
-            <div className="progress" aria-label={`Đã xong ${doneCount} trên ${list.length}`}>
-              <div className="progress-track">
-                <div className="progress-fill" style={{ width: `${percent}%` }} />
-              </div>
-              <span className="progress-text">
-                {doneCount}/{list.length}
-              </span>
-            </div>
-          )}
+        <section className={`hero ${allDone ? 'is-complete' : ''}`}>
+          <div className="hero-text">
+            <p className="hero-greet">
+              {greeting()}, {firstName} <span aria-hidden="true">{allDone ? '🎉' : '👋'}</span>
+            </p>
+            <h1 className="hero-title">{headline(active.length, doneCount)}</h1>
+            <p className="hero-date">{formatLongDate(today)}</p>
+          </div>
+          {active.length > 0 && <ProgressRing done={doneCount} total={active.length} />}
         </section>
 
         {notice && (
@@ -75,10 +111,11 @@ export function Dashboard() {
           </div>
         )}
 
-        <NewHabitForm />
+        <NewHabitForm habits={active} />
 
         {habits.isPending && (
           <div className="list" aria-busy="true">
+            <div className="card skeleton" />
             <div className="card skeleton" />
             <div className="card skeleton" />
           </div>
@@ -93,22 +130,24 @@ export function Dashboard() {
           </div>
         )}
 
-        {habits.isSuccess && list.length === 0 && <EmptyState onError={setNotice} />}
+        {habits.isSuccess && active.length === 0 && <EmptyState onError={setNotice} />}
 
-        {list.length > 0 && (
+        {active.length > 0 && (
           <div className="list">
-            {list.map((habit) => (
+            {active.map((habit) => (
               <HabitCard key={habit.id} habit={habit} today={today} onError={setNotice} />
             ))}
           </div>
         )}
 
-        <div className="archived-toggle">
-          <button className="link" type="button" onClick={() => setShowArchived((v) => !v)}>
-            {showArchived ? 'Ẩn thói quen đã lưu trữ' : 'Xem thói quen đã lưu trữ'}
-          </button>
-        </div>
-        {showArchived && <ArchivedList onError={setNotice} />}
+        {archived.length > 0 && (
+          <div className="archived-toggle">
+            <button className="link" type="button" onClick={() => setShowArchived((v) => !v)}>
+              {showArchived ? 'Ẩn thói quen đã lưu trữ' : `Đã lưu trữ (${archived.length})`}
+            </button>
+          </div>
+        )}
+        {showArchived && archived.length > 0 && <ArchivedList habits={archived} onError={setNotice} />}
       </main>
     </div>
   )
@@ -119,44 +158,44 @@ function EmptyState({ onError }: { onError: (message: string) => void }) {
 
   return (
     <div className="empty">
+      <span className="empty-emoji" aria-hidden="true">🌱</span>
       <p className="empty-title">Chưa có thói quen nào</p>
-      <p className="muted">
-        Gõ vào ô ở trên, hoặc chọn nhanh một gợi ý. Bắt đầu nhỏ thôi — một việc làm được mỗi ngày tốt hơn
-        năm việc bỏ dở.
-      </p>
+      <p className="muted">Chọn nhanh một cái bên dưới. Bắt đầu nhỏ thôi — làm được mỗi ngày mới là quan trọng.</p>
       <div className="chips">
-        {SUGGESTIONS.map((name) => (
-          <button
-            key={name}
-            type="button"
-            className="chip"
-            disabled={createHabit.isPending}
-            onClick={() =>
-              createHabit.mutate({ name }, { onError: (err) => onError(friendlyError(err)) })
-            }
-          >
-            + {name}
-          </button>
-        ))}
+        {SUGGESTIONS.map((s, i) => {
+          const color = HABIT_COLORS[i % HABIT_COLORS.length].value
+          return (
+            <button
+              key={s.name}
+              type="button"
+              className="chip"
+              style={{ '--c': color } as CSSProperties}
+              disabled={createHabit.isPending}
+              onClick={() =>
+                createHabit.mutate({ name: s.name, color }, { onError: (err) => onError(friendlyError(err)) })
+              }
+            >
+              <span aria-hidden="true">{s.emoji}</span> {s.name}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function ArchivedList({ onError }: { onError: (message: string) => void }) {
-  const all = useHabits(true)
+function ArchivedList({ habits, onError }: { habits: Habit[]; onError: (message: string) => void }) {
   const archive = useArchiveHabit()
   const remove = useDeleteHabit()
-  const archived = (all.data ?? []).filter((h) => h.archivedAt !== null)
-
-  if (all.isPending) return <p className="muted archived-empty">Đang tải…</p>
-  if (archived.length === 0) return <p className="muted archived-empty">Chưa lưu trữ thói quen nào.</p>
 
   return (
     <ul className="archived">
-      {archived.map((habit) => (
-        <li key={habit.id}>
-          <span className="archived-name">{habit.name}</span>
+      {habits.map((habit) => (
+        <li key={habit.id} style={{ '--c': colorOf(habit) } as CSSProperties}>
+          <span className="archived-name">
+            <span className="dot" aria-hidden="true" />
+            {habit.name}
+          </span>
           <div className="archived-actions">
             <button
               className="btn btn-ghost btn-sm"

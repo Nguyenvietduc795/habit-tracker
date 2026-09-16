@@ -1,12 +1,13 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type CSSProperties, type FormEvent } from 'react'
 import { friendlyError } from '../lib/api.ts'
+import { HABIT_COLORS, colorOf } from '../lib/colors.ts'
 import { WEEKDAY_LABELS, calendarWeeks, formatShortDate } from '../lib/dates.ts'
 import {
   useArchiveHabit,
   useDeleteHabit,
   useHabitDetail,
-  useRenameHabit,
   useToggleCheckIn,
+  useUpdateHabit,
 } from '../lib/habits.ts'
 import type { Habit } from '../lib/types.ts'
 
@@ -16,28 +17,34 @@ interface Props {
   onError: (message: string) => void
 }
 
-function streakText(habit: Habit): string {
-  if (habit.checkedToday) return `${habit.currentStreak} ngày liên tục`
-  if (habit.currentStreak > 0) return `${habit.currentStreak} ngày — tick hôm nay để giữ chuỗi`
-  return 'Chưa có chuỗi — tick hôm nay để bắt đầu'
-}
+const BURST_DOTS = Array.from({ length: 8 }, (_, i) => i)
 
 export function HabitCard({ habit, today, onError }: Props) {
   const [open, setOpen] = useState(false)
   const [renaming, setRenaming] = useState(false)
   const [draft, setDraft] = useState(habit.name)
+  // Doi key moi lan tick -> hat mau ban ra lai tu dau
+  const [burst, setBurst] = useState(0)
 
   const detail = useHabitDetail(habit.id, open)
   const toggle = useToggleCheckIn()
-  const rename = useRenameHabit()
+  const update = useUpdateHabit()
   const archive = useArchiveHabit()
   const remove = useDeleteHabit()
+
+  const color = colorOf(habit)
+  const done = habit.checkedToday
 
   function toggleDay(date: string, checked: boolean) {
     toggle.mutate(
       { habitId: habit.id, date, checked, today },
       { onError: (err) => onError(friendlyError(err, { 409: 'Ngày này đã được tick rồi.' })) },
     )
+  }
+
+  function handleCheck() {
+    if (!done) setBurst((n) => n + 1)
+    toggleDay(today, done)
   }
 
   function handleRename(event: FormEvent) {
@@ -47,19 +54,12 @@ export function HabitCard({ habit, today, onError }: Props) {
       setRenaming(false)
       return
     }
-    rename.mutate(
+    update.mutate(
       { id: habit.id, name },
       {
         onSuccess: () => setRenaming(false),
         onError: (err) => onError(friendlyError(err)),
       },
-    )
-  }
-
-  function handleArchive() {
-    archive.mutate(
-      { id: habit.id, archived: true },
-      { onError: (err) => onError(friendlyError(err)) },
     )
   }
 
@@ -72,17 +72,19 @@ export function HabitCard({ habit, today, onError }: Props) {
     remove.mutate(habit.id, { onError: (err) => onError(friendlyError(err)) })
   }
 
-  const done = habit.checkedToday
   const checkedDays = new Set(detail.data?.checkIns.map((c) => c.doneOn) ?? [])
   const days = calendarWeeks(today)
 
   return (
-    <article className={`card ${done ? 'is-done' : ''} ${open ? 'is-open' : ''}`}>
+    <article
+      className={`card ${done ? 'is-done' : ''} ${open ? 'is-open' : ''}`}
+      style={{ '--c': color } as CSSProperties}
+    >
       <div className="card-row">
         <button
           type="button"
           className="check"
-          onClick={() => toggleDay(today, done)}
+          onClick={handleCheck}
           disabled={toggle.isPending}
           aria-pressed={done}
           aria-label={done ? `Bỏ tick "${habit.name}" hôm nay` : `Tick "${habit.name}" hôm nay`}
@@ -90,6 +92,13 @@ export function HabitCard({ habit, today, onError }: Props) {
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12.5l4.5 4.5L19 7.5" />
           </svg>
+          {burst > 0 && (
+            <span className="burst" key={burst} aria-hidden="true">
+              {BURST_DOTS.map((i) => (
+                <i key={i} style={{ '--i': i } as CSSProperties} />
+              ))}
+            </span>
+          )}
         </button>
 
         <button
@@ -99,9 +108,19 @@ export function HabitCard({ habit, today, onError }: Props) {
           aria-expanded={open}
         >
           <span className="card-name">{habit.name}</span>
-          <span className={`card-sub ${habit.currentStreak > 0 ? 'has-streak' : ''}`}>
-            {habit.currentStreak > 0 && <span aria-hidden="true">🔥 </span>}
-            {streakText(habit)}
+          <span className="card-meta">
+            {habit.currentStreak > 0 ? (
+              <span className="pill pill-flame">
+                <span aria-hidden="true">🔥</span>
+                <b key={habit.currentStreak} className="bump">
+                  {habit.currentStreak}
+                </b>{' '}
+                ngày
+              </span>
+            ) : (
+              <span className="pill pill-muted">Bắt đầu hôm nay</span>
+            )}
+            {!done && habit.currentStreak > 0 && <span className="meta-warn">Tick để giữ chuỗi</span>}
           </span>
         </button>
 
@@ -129,7 +148,7 @@ export function HabitCard({ habit, today, onError }: Props) {
                   <span className="stat-label">Dài nhất</span>
                 </div>
                 <div className="stat">
-                  <span className="stat-num">{detail.data.checkIns.length}</span>
+                  <span className="stat-num">{checkedDays.size}</span>
                   <span className="stat-label">Tổng số lần</span>
                 </div>
               </div>
@@ -164,6 +183,25 @@ export function HabitCard({ habit, today, onError }: Props) {
             </>
           )}
 
+          <div className="swatches" role="radiogroup" aria-label="Màu của thói quen">
+            {HABIT_COLORS.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                role="radio"
+                aria-checked={c.value === color}
+                aria-label={c.name}
+                title={c.name}
+                className={`swatch ${c.value === color ? 'is-selected' : ''}`}
+                style={{ background: c.value }}
+                onClick={() =>
+                  c.value !== color &&
+                  update.mutate({ id: habit.id, color: c.value }, { onError: (err) => onError(friendlyError(err)) })
+                }
+              />
+            ))}
+          </div>
+
           {renaming ? (
             <form className="rename" onSubmit={handleRename}>
               <input
@@ -173,7 +211,7 @@ export function HabitCard({ habit, today, onError }: Props) {
                 autoFocus
                 aria-label="Tên mới"
               />
-              <button className="btn btn-primary" type="submit" disabled={rename.isPending}>
+              <button className="btn btn-primary" type="submit" disabled={update.isPending}>
                 Lưu
               </button>
               <button
@@ -192,7 +230,14 @@ export function HabitCard({ habit, today, onError }: Props) {
               <button className="btn btn-ghost" type="button" onClick={() => setRenaming(true)}>
                 Đổi tên
               </button>
-              <button className="btn btn-ghost" type="button" onClick={handleArchive} disabled={archive.isPending}>
+              <button
+                className="btn btn-ghost"
+                type="button"
+                onClick={() =>
+                  archive.mutate({ id: habit.id, archived: true }, { onError: (err) => onError(friendlyError(err)) })
+                }
+                disabled={archive.isPending}
+              >
                 Lưu trữ
               </button>
               <button className="btn btn-danger" type="button" onClick={handleDelete} disabled={remove.isPending}>
