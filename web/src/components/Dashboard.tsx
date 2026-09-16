@@ -5,8 +5,9 @@ import { HABIT_COLORS, colorOf } from '../lib/colors.ts'
 import { formatLongDate, todayIn } from '../lib/dates.ts'
 import { useArchiveHabit, useCreateHabit, useDeleteHabit, useHabits } from '../lib/habits.ts'
 import type { Habit } from '../lib/types.ts'
-import { Confetti, ProgressRing } from './Celebration.tsx'
+import { Confetti, ProgressRing, type ConfettiHandle } from './Celebration.tsx'
 import { HabitCard } from './HabitCard.tsx'
+import { Mascot, type MascotHandle, type Reaction } from './Mascot.tsx'
 import { NewHabitForm } from './NewHabitForm.tsx'
 
 const SUGGESTIONS = [
@@ -15,6 +16,9 @@ const SUGGESTIONS = [
   { name: 'Tập thể dục', emoji: '🏃' },
   { name: 'Đi ngủ trước 23h', emoji: '🌙' },
 ]
+
+// Moi lan tick cao doi mot kieu vui, khong lap lai nham chan
+const CHEERS: Reaction[] = ['delighted', 'sparkle', 'wink']
 
 function greeting(): string {
   const hour = new Date().getHours()
@@ -37,8 +41,9 @@ export function Dashboard() {
   const habits = useHabits()
   const [notice, setNotice] = useState<string | null>(null)
   const [showArchived, setShowArchived] = useState(false)
-  const [confettiKey, setConfettiKey] = useState<number | null>(null)
   const prevDone = useRef<number | null>(null)
+  const foxRef = useRef<MascotHandle>(null)
+  const confettiRef = useRef<ConfettiHandle>(null)
 
   const all = habits.data ?? []
   const active = all.filter((h) => h.archivedAt === null)
@@ -52,19 +57,23 @@ export function Dashboard() {
     return () => window.clearTimeout(timer)
   }, [notice])
 
-  // Phao giay CHI khi vua tick xong viec cuoi — khong ban lai moi lan mo app
+  // Cao + phao giay phan ung theo so viec da xong. Lan tai dau (prev = null)
+  // thi im lang — chi phan ung khi user VUA lam gi do, khong phai moi lan mo app.
   useEffect(() => {
     if (!habits.isSuccess) return
     const prev = prevDone.current
     prevDone.current = doneCount
-    if (prev !== null && allDone && prev < active.length) setConfettiKey(Date.now())
-  }, [doneCount, allDone, active.length, habits.isSuccess])
+    if (prev === null || prev === doneCount) return
 
-  useEffect(() => {
-    if (confettiKey === null) return
-    const timer = window.setTimeout(() => setConfettiKey(null), 3200)
-    return () => window.clearTimeout(timer)
-  }, [confettiKey])
+    if (doneCount < prev) {
+      foxRef.current?.react('surprised', 700)
+    } else if (allDone) {
+      confettiRef.current?.fire()
+      foxRef.current?.react('heart', 1800)
+    } else {
+      foxRef.current?.react(CHEERS[doneCount % CHEERS.length])
+    }
+  }, [doneCount, allDone, habits.isSuccess])
 
   if (!user) return null
 
@@ -73,7 +82,7 @@ export function Dashboard() {
 
   return (
     <div className="shell">
-      {confettiKey !== null && <Confetti key={confettiKey} />}
+      <Confetti ref={confettiRef} />
 
       <header className="topbar">
         <div className="brand">
@@ -91,16 +100,28 @@ export function Dashboard() {
       </header>
 
       <main>
-        <section className={`hero ${allDone ? 'is-complete' : ''}`}>
-          <div className="hero-text">
-            <p className="hero-greet">
-              {greeting()}, {firstName} <span aria-hidden="true">{allDone ? '🎉' : '👋'}</span>
-            </p>
-            <h1 className="hero-title">{headline(active.length, doneCount)}</h1>
-            <p className="hero-date">{formatLongDate(today)}</p>
+        <div className="hero-wrap">
+          {/* Cao lo dau len tu mep tren khung — phan nguc nap sau khung */}
+          <div className="hero-mascot">
+            <Mascot
+              ref={foxRef}
+              directions="/mascots/fox-directions.webp"
+              reactions="/mascots/fox-reactions.webp"
+              size={92}
+              label="bé cáo"
+            />
           </div>
-          {active.length > 0 && <ProgressRing done={doneCount} total={active.length} />}
-        </section>
+          <section className={`hero ${allDone ? 'is-complete' : ''}`}>
+            <div className="hero-text">
+              <p className="hero-greet">
+                {greeting()}, {firstName} <span aria-hidden="true">{allDone ? '🎉' : '👋'}</span>
+              </p>
+              <h1 className="hero-title">{headline(active.length, doneCount)}</h1>
+              <p className="hero-date">{formatLongDate(today)}</p>
+            </div>
+            {active.length > 0 && <ProgressRing done={doneCount} total={active.length} />}
+          </section>
+        </div>
 
         {notice && (
           <div className="notice" role="alert">

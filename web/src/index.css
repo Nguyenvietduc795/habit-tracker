@@ -374,6 +374,26 @@ input::placeholder {
 
 /* -------------------------------------------------------------- hero */
 
+/* Cho trong phia tren de dau cao lo len khoi khung */
+.hero-wrap {
+  position: relative;
+  margin: 3.25rem 0 1.25rem;
+}
+
+.hero-wrap .hero {
+  z-index: 1;
+  margin-bottom: 0;
+}
+
+/* Cao dung SAU khung (z-index thap hon): phan nguc bi khung che,
+   chi thay dau ngo len — nhu dang nap sau tam bang */
+.hero-mascot {
+  position: absolute;
+  top: -64px;
+  right: 1.75rem;
+  z-index: 0;
+}
+
 .hero {
   position: relative;
   display: flex;

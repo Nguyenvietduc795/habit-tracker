@@ -1,5 +1,9 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useImperativeHandle, useState, type CSSProperties, type Ref } from 'react'
 import { HABIT_COLORS } from '../lib/colors.ts'
+
+export interface ConfettiHandle {
+  fire: () => void
+}
 
 /** So "ngau nhien" co dinh theo chi so — component van thuan, moi lan render giong nhau. */
 function pseudoRandom(seed: number): number {
@@ -17,10 +21,26 @@ const PIECES = Array.from({ length: 36 }, (_, i) => ({
   round: i % 3 === 0,
 }))
 
-/** Phao giay roi khi tick xong thoi quen cuoi cung trong ngay. */
-export function Confetti() {
+/**
+ * Phao giay roi khi tick xong thoi quen cuoi cung trong ngay.
+ * Ban bang lenh: confettiRef.current.fire() — giong cach goi cao phan ung.
+ */
+export function Confetti({ ref }: { ref?: Ref<ConfettiHandle> }) {
+  const [burst, setBurst] = useState<number | null>(null)
+
+  useImperativeHandle(ref, () => ({ fire: () => setBurst((n) => (n ?? 0) + 1) }), [])
+
+  // Roi xong thi go khoi DOM
+  useEffect(() => {
+    if (burst === null) return
+    const timer = window.setTimeout(() => setBurst(null), 3200)
+    return () => window.clearTimeout(timer)
+  }, [burst])
+
+  if (burst === null) return null
+
   return (
-    <div className="confetti" aria-hidden="true">
+    <div className="confetti" aria-hidden="true" key={burst}>
       {PIECES.map((p, i) => (
         <i
           key={i}

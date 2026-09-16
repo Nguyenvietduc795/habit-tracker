@@ -86,3 +86,9 @@ npm run dev --prefix web
 - [x] Chặng 4 — Frontend (layout + login + list)
 - [ ] Chặng 5 — Kết nối & Auth end-to-end
 - [ ] Chặng 6 — Deploy & Tài liệu
+
+---
+
+## Ghi công
+
+- **Bé cáo** trên trang chính lấy từ [page-mascot](https://github.com/nilbuild/page-mascot) của Kamran Ahmed, giấy phép MIT. Ảnh nhân vật nằm ở `web/public/mascots/`, component đã chép về `web/src/components/Mascot.tsx` (giữ nguyên thông báo giấy phép) và sửa thêm hàm `react()` để cáo phản ứng khi tick.
