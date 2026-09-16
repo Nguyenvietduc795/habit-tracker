@@ -35,16 +35,22 @@ export function HabitCard({ habit, today, onError }: Props) {
   const color = colorOf(habit)
   const done = habit.checkedToday
 
-  function toggleDay(date: string, checked: boolean) {
-    toggle.mutate(
-      { habitId: habit.id, date, checked, today },
-      { onError: (err) => onError(friendlyError(err, { 409: 'Ngày này đã được tick rồi.' })) },
-    )
-  }
-
+  // Chi tick / bo tick cho HOM NAY — ngay cu da khoa
   function handleCheck() {
     if (!done) setBurst((n) => n + 1)
-    toggleDay(today, done)
+    toggle.mutate(
+      { habitId: habit.id, date: today, checked: done, today },
+      {
+        onError: (err) =>
+          onError(
+            friendlyError(err, {
+              // Vd. de trang mo qua nua dem: "hom nay" tren may da cu
+              400: 'Đã sang ngày mới — tải lại trang rồi tick nhé.',
+              409: 'Hôm nay đã tick rồi.',
+            }),
+          ),
+      },
+    )
   }
 
   function handleRename(event: FormEvent) {
@@ -160,25 +166,24 @@ export function HabitCard({ habit, today, onError }: Props) {
                       {label}
                     </span>
                   ))}
+                  {/* Lich CHI DE XEM. Luat san pham: chi tick duoc hom nay (nut tron o tren),
+                      ngay cu da khoa — backend cung chan, khong chi giau nut o day. */}
                   {days.map((date) => {
                     const on = checkedDays.has(date)
                     const future = date > today
                     return (
-                      <button
+                      <span
                         key={date}
-                        type="button"
-                        className={`day ${on ? 'is-on' : ''} ${date === today ? 'is-today' : ''}`}
-                        disabled={future || toggle.isPending}
-                        onClick={() => toggleDay(date, on)}
-                        aria-pressed={on}
-                        title={future ? 'Chưa tới ngày này' : `${formatShortDate(date)} — bấm để ${on ? 'bỏ tick' : 'tick bù'}`}
+                        role="gridcell"
+                        className={`day ${on ? 'is-on' : ''} ${date === today ? 'is-today' : ''} ${future ? 'is-future' : ''}`}
+                        aria-label={`${formatShortDate(date)}: ${future ? 'chưa tới' : on ? 'đã làm' : 'chưa làm'}`}
                       >
                         {Number(date.slice(8))}
-                      </button>
+                      </span>
                     )
                   })}
                 </div>
-                <p className="hint">Quên tick hôm trước? Bấm vào ngày đó để tick bù.</p>
+                <p className="hint">Chỉ tick được trong ngày. Qua nửa đêm mà quên là chuỗi bắt đầu lại từ đầu.</p>
               </div>
             </>
           )}

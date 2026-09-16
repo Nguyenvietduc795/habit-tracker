@@ -116,9 +116,9 @@ Tài liệu Chặng 2. Trả lời 3 câu: dữ liệu gồm gì, app làm đư�
 
 | # | Thao tác | HTTP | Ghi chú |
 |---|---|---|---|
-| C1 | Tick hôm nay | `POST /habits/:id/check-in` | Tick lần 2 trong ngày → DB chặn |
-| C2 | Bỏ tick | `DELETE /habits/:id/check-in?date=` | Lỡ tay bấm nhầm |
-| C3 | Xem lịch sử | `GET /habits/:id/check-ins?from=&to=` | Vẽ lịch trong tháng |
+| C1 | Tick hôm nay | `POST /habits/:id/check-in` | Tick lần 2 trong ngày → DB chặn. **Không tick bù ngày cũ** |
+| C2 | Bỏ tick hôm nay | `DELETE /habits/:id/check-in` | Lỡ tay bấm nhầm. Ngày cũ đã khoá |
+| C3 | Xem lịch sử | `GET /habits/:id/check-ins?from=&to=` | Vẽ lịch trong tháng — chỉ để xem |
 
 ### 4.4 Tính toán (không phải CRUD)
 
@@ -133,7 +133,7 @@ Tài liệu Chặng 2. Trả lời 3 câu: dữ liệu gồm gì, app làm đư�
 ### 4.5 Luật nghiệp vụ (bắt buộc kiểm ở backend)
 
 1. User chỉ đọc/sửa/xoá được habit của **chính mình** — kiểm ở backend, không tin frontend.
-2. Không được check-in cho **ngày tương lai** (database không làm được luật này).
+2. Chỉ check-in / bỏ check-in cho **hôm nay** — không tick bù ngày cũ, không tick trước ngày tương lai (database không làm được luật này).
 3. Ngày "hôm nay" tính theo `users.timezone`, không theo giờ server.
 4. Habit đã archive thì không tick được nữa.
 

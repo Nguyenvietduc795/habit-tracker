@@ -210,31 +210,37 @@ Lỗi: `404` không tồn tại **hoặc không phải của mình**
 
 ## 3. Check-ins
 
-### `POST /habits/:id/check-in` — Đánh dấu đã làm
+### `POST /habits/:id/check-in` — Đánh dấu đã làm **hôm nay**
+
+> **Chỉ tick được cho hôm nay** (theo múi giờ của user). Không tick bù ngày cũ — nếu cho tick bù thì ai cũng tự "vá" được chuỗi và con số 🔥 mất ý nghĩa.
 
 ```json
-// Request — không gửi date thì mặc định là hôm nay (theo múi giờ của user)
-{ "date": "2026-09-15", "note": "Chạy 5km" }
+// Request — date không cần gửi; nếu gửi thì phải đúng là hôm nay
+{ "note": "Chạy 5km" }
 ```
 
 ```json
 // 201 Created
-{ "id": "uuid", "doneOn": "2026-09-15", "note": "Chạy 5km", "currentStreak": 8 }
+{ "doneOn": "2026-09-16", "note": "Chạy 5km", "currentStreak": 8 }
 ```
 
 Lỗi:
-- `409` đã tick ngày đó rồi
-- `400` tick cho ngày tương lai
+- `409` hôm nay đã tick rồi
+- `400` gửi `date` khác hôm nay (ngày cũ hoặc tương lai)
 - `400` habit đã lưu trữ
 - `404` habit không phải của mình
 
 ---
 
-### `DELETE /habits/:id/check-in?date=2026-09-15` — Bỏ tick
+### `DELETE /habits/:id/check-in` — Bỏ tick **hôm nay**
+
+Dùng khi lỡ tay bấm nhầm. Lịch sử ngày cũ đã khoá: không tick bù được thì cũng không xoá được.
 
 ```
 // 204 No Content
 ```
+
+Lỗi: `400` nếu gửi `?date=` khác hôm nay · `404` hôm nay chưa tick
 
 ---
 
@@ -254,7 +260,7 @@ Những luật này **không** đặt được ở database, nên backend bắt 
 | # | Luật | Vì sao database không làm được |
 |---|---|---|
 | 1 | User chỉ đụng được dữ liệu của mình | Database không biết ai đang gọi API |
-| 2 | Không tick cho ngày tương lai | Postgres không cho dùng `current_date` trong CHECK |
+| 2 | Chỉ tick / bỏ tick cho **hôm nay** — ngày cũ đã khoá | Postgres không cho dùng `current_date` trong CHECK |
 | 3 | "Hôm nay" tính theo `users.timezone` | Database chỉ biết giờ server |
 | 4 | Habit đã lưu trữ thì không tick được | Cần đọc trạng thái habit rồi mới quyết định |
 

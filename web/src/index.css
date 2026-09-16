@@ -944,7 +944,10 @@ input::placeholder {
   color: var(--muted);
 }
 
+/* O ngay chi de xem — khong bam duoc, nen khong co hover/active */
 .day {
+  display: grid;
+  place-items: center;
   aspect-ratio: 1;
   max-width: 100%;
   border: 1.5px solid var(--line);
@@ -954,16 +957,9 @@ input::placeholder {
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   color: var(--text-2);
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-}
-
-.day:hover:not(:disabled) {
-  border-color: var(--c);
-  background: color-mix(in srgb, var(--c) 10%, #fff);
-}
-
-.day:active:not(:disabled) {
-  transform: scale(0.9);
+  cursor: default;
+  user-select: none;
+  transition: background 0.2s;
 }
 
 .day.is-on {
@@ -973,15 +969,11 @@ input::placeholder {
   font-weight: 700;
 }
 
-.day.is-on:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--c) 75%, #000);
-}
-
 .day.is-today {
   box-shadow: 0 0 0 2.5px #fff, 0 0 0 4.5px var(--c);
 }
 
-.day:disabled:not(.is-on) {
+.day.is-future {
   border-style: dashed;
   background: transparent;
   color: #c4c1d9;

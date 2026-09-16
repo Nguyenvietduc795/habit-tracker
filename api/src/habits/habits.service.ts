@@ -166,10 +166,16 @@ export class HabitsService {
     const today = todayIn(user.timezone);
     const date = dto.date ?? today;
 
-    // Luat nay database khong giu duoc (CHECK khong dung duoc current_date)
-    // nen backend phai kiem.
-    if (date > today) {
-      throw new BadRequestException('Khong tick duoc cho ngay tuong lai');
+    // LUAT SAN PHAM: chi tick duoc cho HOM NAY.
+    // Cho tick bu ngay cu thi ai cung tu "va" duoc chuoi -> con so 🔥 mat y nghia.
+    // Database khong giu duoc luat nay (CHECK khong dung duoc current_date)
+    // nen backend phai kiem — giau nut o frontend thoi la chua du.
+    if (date !== today) {
+      throw new BadRequestException(
+        date > today
+          ? 'Khong tick duoc cho ngay tuong lai'
+          : 'Chi tick duoc cho hom nay, khong tick bu ngay cu',
+      );
     }
 
     try {
@@ -200,9 +206,17 @@ export class HabitsService {
   ): Promise<void> {
     await this.getOwnedHabit(user, habitId);
 
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      throw new BadRequestException('Thieu tham so date dang YYYY-MM-DD');
+    if (date !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('Tham so date phai dang YYYY-MM-DD');
     }
+
+    // Lich su ngay cu da khoa: khong tick bu duoc thi cung khong xoa duoc.
+    // Chi bo tick duoc cho hom nay (lo tay bam nham).
+    const today = todayIn(user.timezone);
+    if (date !== undefined && date !== today) {
+      throw new BadRequestException('Chi bo tick duoc cho hom nay, lich su ngay cu da khoa');
+    }
+    date = today;
 
     const row = await this.db.one<{ id: string }>(
       `delete from check_ins where habit_id = $1 and done_on = $2 returning id`,

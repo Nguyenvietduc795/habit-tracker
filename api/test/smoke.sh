@@ -79,12 +79,24 @@ C=$(code -X POST "$API/habits/$HID/check-in" -H "Authorization: Bearer $TOKEN_A"
    -H 'Content-Type: application/json' -d '{"date":"2099-01-01"}')
 check "tick ngay tuong lai -> 400" 400 "$C"
 
-YDAY=$(node -e "const d=new Date();d.setDate(d.getDate()-1);console.log(d.toISOString().slice(0,10))")
+# Luat: chi tick / bo tick duoc cho HOM NAY. Ngay cu da khoa.
+# (Cach tinh chuoi nhieu ngay kiem o api/src/common/date.util.spec.ts)
+YDAY=$(node -e "const d=new Date();d.setDate(d.getDate()-2);console.log(d.toISOString().slice(0,10))")
 C=$(code -X POST "$API/habits/$HID/check-in" -H "Authorization: Bearer $TOKEN_A" \
    -H 'Content-Type: application/json' -d "{\"date\":\"$YDAY\"}")
-check "tick hom qua -> 201" 201 "$C"
+check "tick bu ngay cu -> 400" 400 "$C"
+
+C=$(code -X DELETE "$API/habits/$HID/check-in?date=$YDAY" -H "Authorization: Bearer $TOKEN_A")
+check "bo tick ngay cu -> 400" 400 "$C"
+
+C=$(code -X DELETE "$API/habits/$HID/check-in" -H "Authorization: Bearer $TOKEN_A")
+check "bo tick hom nay -> 204" 204 "$C"
+
+C=$(code -X POST "$API/habits/$HID/check-in" -H "Authorization: Bearer $TOKEN_A" \
+   -H 'Content-Type: application/json' -d '{}')
+check "tick lai hom nay -> 201" 201 "$C"
 STREAK=$(node -e "try{console.log(JSON.parse(require('fs').readFileSync('./.body.json','utf8')).currentStreak)}catch(e){console.log('?')}")
-check "streak 2 ngay lien tiep" 2 "$STREAK"
+check "streak van la 1" 1 "$STREAK"
 
 C=$(code "$API/habits/$HID/check-ins" -H "Authorization: Bearer $TOKEN_A")
 check "lich su check-in -> 200" 200 "$C"

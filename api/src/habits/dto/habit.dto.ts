@@ -47,7 +47,10 @@ export class ArchiveHabitDto {
 }
 
 export class CreateCheckInDto {
-  /** Khong gui thi mac dinh la hom nay theo mui gio cua user. */
+  /**
+   * Khong gui thi mac dinh la hom nay theo mui gio cua user.
+   * Gui ngay khac hom nay -> 400 (chi tick duoc cho hom nay).
+   */
   @IsOptional()
   @IsISO8601({ strict: true }, { message: 'date phai dang YYYY-MM-DD' })
   date?: string;
