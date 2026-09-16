@@ -83,6 +83,6 @@ npm run dev --prefix web
 - [x] Chặng 1 — Setup & Repo
 - [x] Chặng 2 — Database (ERD + migration)
 - [x] Chặng 3 — Backend (API contract + auth + CRUD)
-- [ ] Chặng 4 — Frontend (layout + login + list)
+- [x] Chặng 4 — Frontend (layout + login + list)
 - [ ] Chặng 5 — Kết nối & Auth end-to-end
 - [ ] Chặng 6 — Deploy & Tài liệu
