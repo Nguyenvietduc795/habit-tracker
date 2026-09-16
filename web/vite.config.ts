@@ -7,4 +7,14 @@ export default defineConfig({
   // .env dung chung o goc repo. Vite CHI dua bien co tien to VITE_ vao
   // trinh duyet, nen DATABASE_URL va JWT_SECRET khong bao gio lot ra frontend.
   envDir: '..',
+  // `npm run preview` bat chuoc dung cach Vercel chuyen tiep /api -> backend,
+  // de thu ban production ngay tren may truoc khi deploy.
+  preview: {
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
+  },
 })

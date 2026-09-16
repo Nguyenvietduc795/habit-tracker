@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HabitsModule } from './habits/habits.module.js';
+import { HealthController } from './health.controller.js';
 
 @Module({
   imports: [
@@ -15,5 +16,6 @@ import { HabitsModule } from './habits/habits.module.js';
     AuthModule,
     HabitsModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}

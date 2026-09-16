@@ -1,0 +1,33 @@
+# Render Blueprint — tao backend bang 1 lan bam.
+# Render dashboard -> New -> Blueprint -> chon repo nay.
+services:
+  - type: web
+    name: habit-tracker-api-vietduc
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    rootDir: api
+    # --include=dev: can nest CLI + TypeScript de build, du NODE_ENV=production
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start:prod
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      # Render se hoi ban dan vao luc tao — KHONG ghi mat khau DB vao file nay
+      - key: DATABASE_URL
+        sync: false
+      # Render tu sinh chuoi ngau nhien, khong ai phai go tay
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_EXPIRES
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES
+        value: 7d
+      # Trinh duyet goi qua proxy Vercel nen thay duong dan /api/auth
+      - key: COOKIE_PATH
+        value: /api/auth

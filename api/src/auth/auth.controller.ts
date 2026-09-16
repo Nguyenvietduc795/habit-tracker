@@ -63,7 +63,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     await this.auth.logout(this.readRefreshCookie(req));
-    res.clearCookie(REFRESH_COOKIE, { path: '/auth' });
+    res.clearCookie(REFRESH_COOKIE, { path: this.cookiePath() });
     return { success: true };
   }
 
@@ -85,10 +85,21 @@ export class AuthController {
     res.cookie(REFRESH_COOKIE, tokens.refreshToken, {
       httpOnly: true,
       secure: isProd, // production chay HTTPS thi bat
-      sameSite: isProd ? 'none' : 'lax',
-      path: '/auth', // chi gui kem khi goi /auth/*, khong gui lung tung
+      // Frontend goi qua proxy cung ten mien (Vercel /api -> Render) nen la
+      // cookie "cung trang": 'lax' la du va Safari khong chan.
+      // Chi dat COOKIE_SAMESITE=none neu frontend goi THANG sang ten mien khac.
+      sameSite: this.config.get<'lax' | 'strict' | 'none'>('COOKIE_SAMESITE') ?? 'lax',
+      path: this.cookiePath(), // chi gui kem khi goi API auth, khong gui lung tung
       expires: tokens.refreshExpiresAt,
     });
+  }
+
+  /**
+   * Duong dan trinh duyet NHIN THAY. Local goi thang backend: /auth.
+   * Production di qua proxy Vercel: trinh duyet thay /api/auth -> dat COOKIE_PATH=/api/auth.
+   */
+  private cookiePath(): string {
+    return this.config.get<string>('COOKIE_PATH') ?? '/auth';
   }
 
   private readRefreshCookie(req: Request): string | undefined {

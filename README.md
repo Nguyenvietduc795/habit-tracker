@@ -78,6 +78,36 @@ npm run dev --prefix web
 
 ---
 
+## Deploy
+
+```
+Trình duyệt ──▶ Vercel (web/)  ── /api/* chuyển tiếp ──▶ Render (api/) ──▶ Supabase (Postgres)
+               habit-tracker.vercel.app                  *.onrender.com
+```
+
+**Vì sao đi qua `/api` thay vì gọi thẳng Render?** Frontend và backend khác tên miền thì cookie refresh token thành "cookie bên thứ ba" — Safari/iPhone chặn, user bị đăng xuất mỗi lần tải lại trang. Cho Vercel chuyển tiếp `/api` thì trình duyệt chỉ thấy **một** tên miền.
+
+| Nơi | Cấu hình | Ghi chú |
+|---|---|---|
+| Render | [`render.yaml`](render.yaml) | New → Blueprint → chọn repo. Chỉ cần dán `DATABASE_URL`; `JWT_SECRET` Render tự sinh |
+| Vercel | [`web/vercel.json`](web/vercel.json) | Import repo, **Root Directory = `web`**. Không cần biến môi trường nào |
+
+Thử bản production ngay trên máy (bắt chước proxy của Vercel):
+
+```bash
+npm --prefix web run build
+```
+
+```bash
+npm --prefix web run preview
+```
+
+> Backend chạy local cần `COOKIE_PATH=/api/auth` khi thử theo cách này.
+
+**Lưu ý Render free:** không có request trong 15 phút thì server ngủ, lần mở đầu tiên sau đó mất khoảng 30–60 giây để thức dậy.
+
+---
+
 ## Tiến độ theo 6 chặng
 
 - [x] Chặng 1 — Setup & Repo

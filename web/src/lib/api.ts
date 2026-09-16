@@ -1,4 +1,11 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+/**
+ * Local: goi thang backend o cong 3000.
+ * Production: goi /api tren CHINH ten mien cua frontend; Vercel chuyen tiep sang Render
+ * (xem web/vercel.json). Cung ten mien -> cookie refresh token khong bi Safari chan.
+ */
+const API_URL = (
+  import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:3000')
+).replace(/\/$/, '')
 
 /**
  * Access token CHI nam trong bien nay (bo nho), khong ghi vao localStorage.
